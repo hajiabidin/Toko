@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOKO DIGITAL V3</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="light-mode">
+<div id="category-container"></div>
+    <div id="toast-container"></div>
+
+    <div id="reg-screen" class="overlay">
+        <div class="modal">
+            <h2>Data Pengiriman COD</h2>
+            <input type="text" id="reg-name" placeholder="Nama Lengkap">
+            <input type="tel" id="reg-wa" placeholder="Wa 62......">
+            <textarea id="reg-address" placeholder="Alamat Lengkap"></textarea>
+            <button class="btn-primary" onclick="saveUser()">Simpan & Belanja</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="top-bar">
+            <div class="user-greet">
+                <span>HI, <b id="display-name">USER</b></span>
+                <button class="btn-edit" onclick="showReg()">Edit Alamat</button>
+            </div>
+            <div class="theme-buttons">
+                <button onclick="setTheme('light')">☀️</button>
+                <button onclick="setTheme('dark')">🌙</button>
+            </div>
+            <div class="cart-icon" onclick="toggleCart()">
+                🛒 <span id="cart-count">0</span>
+            </div>
+        </div>
+        <h1 class="shop-title">TOKO DIGITAL</h1>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Cari produk..." onkeyup="searchProduct()">
+        </div>
+    </header>
+
+    <nav class="category-nav">
+        <button class="cat-btn active" onclick="filterProduct('Semua')">Semua</button>
+        <button class="cat-btn" onclick="filterProduct('Laptop')">Laptop</button>
+        <button class="cat-btn" onclick="filterProduct('HP')">HP</button>
+        <button class="cat-btn" onclick="filterProduct('Aksesoris')">Aksesoris</button>
+    </nav>
+
+    <main id="product-list" class="product-grid"></main>
+
+    <div id="detail-screen" class="overlay hidden">
+        <div class="modal">
+            <button class="close-btn" onclick="toggleDetail()">X</button>
+            <div class="slider-container">
+                <img id="detail-img" src="">
+                <div id="nav-slide" class="nav-slide">
+                    <button onclick="moveSlider(-1)" class="btn-nav">❮</button>
+                    <button onclick="moveSlider(1)" class="btn-nav">❯</button>
+                </div>
+            </div>
+            <h2 id="detail-name"></h2>
+            <p id="detail-price"></p>
+            <div class="detail-desc-box">
+                <h4>Deskripsi:</h4>
+                <p id="detail-desc"></p>
+            </div>
+            <button id="detail-add-btn" class="btn-wa">Tambah ke Keranjang</button>
+        </div>
+    </div>
+
+    <div id="cart-screen" class="overlay hidden">
+    <div class="cart-modal">
+        <div class="cart-header no-print">
+            <h3>Keranjang Belanja</h3>
+            <button class="close-btn" onclick="toggleCart()">X</button>
+        </div>
+
+        <div id="thermal-area">
+            <h2 class="thermal-title">TOKO DIGITAL</h2>
+            <div class="thermal-line"></div>
+            
+            <div id="member-info-thermal">
+                </div>
+            
+            <div class="thermal-line"></div>
+            
+            <div id="cart-items"></div>
+            <div id="cart-summary" class="cart-summary-box"></div>
+            
+            <div class="thermal-line"></div>
+            <p style="text-align:center; font-size:12px; margin-top:10px;">Terima Kasih Telah Berbelanja!</p>
+        </div>
+
+        <div class="cart-footer no-print">
+            <button class="btn-wa" onclick="sendWA()">Pesan via WhatsApp</button>
+            <button class="btn-print" onclick="printThermal()">Print Struk 58mm</button>
+        </div>
+    </div>
+</div>
+
+    <script type="module" src="script.js"></script>
+
+</body>
+</html>

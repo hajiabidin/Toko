@@ -164,19 +164,20 @@ window.searchProduct = function() {
     renderProducts(products.filter(p => p.name.toLowerCase().includes(k)));
 };
 
+// --- ISI PESAN WHATAPP ---
 window.sendWA = function() {
     const user = JSON.parse(localStorage.getItem('userData'));
     if (!user) return alert("Isi data dulu!");
-    let t = `*PESANAN BARU*\nNama: ${user.name}\n\n`;
+    let t = `*PESANAN BARU COD*\nNama: ${user.name}\nAlamat: ${user.address}\n----------------------------\n*Daftar Belanja:*\n`;
     let sub = 0;
     cart.forEach(i => {
         t += `- ${i.name} (${i.qty}x)\n`;
         sub += (i.price * i.qty);
     });
-    t += `\nTotal: *Rp ${(sub + HARGA_ONGKIR).toLocaleString()}*`;
+        t += `----------------------------\nTotal: *Rp ${(sub + HARGA_ONGKIR).toLocaleString()}*\n\nSegera siapkan, Trimakasih.`;
     window.open(`https://wa.me/${NOMOR_WA_ADMIN}?text=${encodeURIComponent(t)}`);
 };
-
+// --- DATA PRINTER TERMAL ---
 window.printThermal = () => window.print();
 
 window.onload = () => {

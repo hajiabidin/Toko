@@ -174,7 +174,7 @@ window.sendWA = function() {
         t += `- ${i.name} (${i.qty}x)\n`;
         sub += (i.price * i.qty);
     });
-        t += `----------------------------\nTotal: *Rp ${(sub + HARGA_ONGKIR).toLocaleString()}*\n\nSegera siapkan, Trimakasih.`;
+        t += `----------------------------\n*Total: Rp ${(sub + HARGA_ONGKIR).toLocaleString()}*\n----------------------------\n\nSegera di proses, Terima Kasih.`;
     window.open(`https://wa.me/${NOMOR_WA_ADMIN}?text=${encodeURIComponent(t)}`);
 };
 // --- DATA PRINTER TERMAL ---

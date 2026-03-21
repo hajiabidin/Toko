@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// === ISI DATA FIREBASE KAMU ===
+// === 1. ISI DATA FIREBASE KAMU ===
 
     const firebaseConfig = {
 
@@ -17,34 +17,54 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const productsRef = ref(db, 'products');
 
+// --- DATA STATE ---
 let products = [];
 let cart = [];
 const NOMOR_WA_ADMIN = "6289630280705"; 
 const HARGA_ONGKIR = 3000;
 
-// --- AMBIL DATA CLOUD ---
+// === 2. AMBIL DATA DARI CLOUD ===
 onValue(productsRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
+        // Mengubah objek Firebase menjadi Array agar mudah diolah
         products = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         renderProducts(products);
         renderCategoryNav();
     }
 });
 
-// --- FUNGSI RENDER UTAMA ---
-function renderProducts(data = products) {
+// === 3. FUNGSI RENDER UTAMA ===
+window.renderProducts = function(data = products) {
     const container = document.getElementById('product-list');
     if(!container) return;
-    container.innerHTML = data.map(p => `
-        <div class="product-card">
-            <img src="${p.img}" onclick="window.showDetail('${p.id}')">
-            <h4 onclick="window.showDetail('${p.id}')">${p.name}</h4>
-            <p style="color:var(--primary); font-weight:bold;">Rp ${Number(p.price).toLocaleString()}</p>
-            <button class="btn-primary" onclick="window.addToCart('${p.id}')">+ Keranjang</button>
+
+    container.innerHTML = data.map(p => {
+        // Logika Stok: Jika status undefined atau true, maka Tersedia
+        const isReady = p.status !== false;
+
+        return `
+        <div class="product-card ${isReady ? '' : 'habis'}">
+            <div style="position:relative; overflow:hidden; border-radius:10px;">
+                <img src="${p.img}" 
+                     onclick="window.showDetail('${p.id}')" 
+                     style="width:100%; display:block; ${isReady ? '' : 'filter:grayscale(1); opacity:0.6'}">
+                ${!isReady ? '<span style="position:absolute; top:70px; left:40px; background:red; color:white; padding:3px 8px; border-radius:4px; font-size:14px; font-weight:bold;">STOK HABIS</span>' : ''}
+            </div>
+            <h4 onclick="window.showDetail('${p.id}')" style="margin:10px 0 5px 0;">${p.name}</h4>
+            <p style="color:#2563eb; font-weight:bold; margin:1 3 10px 0; display: flex; justify-content: space-between;">Rp ${Number(p.price).toLocaleString()}
+            
+            <button onclick="${isReady ? `window.addToCart('${p.id}')` : ''}" 
+                    ${isReady ? '' : 'disabled'} 
+                    style="padding: 2px 2px; border-radius: 8px; border: 2px solid var(--primary); font-weight:bold; color:${isReady ? 'var(--primary)' : 'white'}; white-space: nowrap; cursor:${isReady ? 'pointer' : 'not-allowed'}; background:${isReady ? 'transparent' : 'red'}">
+                ${isReady ? '+ ADD 🛒' : '- Habis -'}
+            </button></p>
         </div>
-    `).join('');
-}
+        `;
+    }).join('');
+};
+
+// --- Batas render stok habis ---
 
 function renderCategoryNav() {
     const nav = document.querySelector('.category-nav');
@@ -55,47 +75,54 @@ function renderCategoryNav() {
     `).join('');
 }
 
-// --- JABAT TANGAN (WINDOW EXPOSE) ---
-window.saveUser = function() {
-    const n = document.getElementById('reg-name').value;
-    const w = document.getElementById('reg-wa').value;
-    const a = document.getElementById('reg-address').value;
-    if(!n || !w || !a) return alert("⚠️ Isi data lengkap!");
-    localStorage.setItem('userData', JSON.stringify({name:n, wa:w, address:a}));
-    document.getElementById('reg-screen').classList.add('hidden');
-    updateGreeting();
-};
-
-function updateGreeting() {
-    const d = JSON.parse(localStorage.getItem('userData'));
-    if(d) document.getElementById('display-name').innerText = d.name.toUpperCase();
-}
-
-window.showReg = () => document.getElementById('reg-screen').classList.remove('hidden');
-window.setTheme = (m) => { document.body.className = m + '-mode'; };
-
+// === 4. DETAIL PRODUK ===
 window.showDetail = function(id) {
     const p = products.find(x => x.id === id);
     if(!p) return;
+    
+    const isReady = p.status !== false;
+    
     document.getElementById('detail-img').src = p.img;
     document.getElementById('detail-name').innerText = p.name;
     document.getElementById('detail-price').innerText = "Rp " + Number(p.price).toLocaleString();
-    document.getElementById('detail-desc').innerText = p.desc;
-    document.getElementById('detail-add-btn').onclick = () => { window.addToCart(p.id); window.toggleDetail(); };
-    window.toggleDetail();
+    document.getElementById('detail-desc').innerText = p.desc || 'Tidak ada deskripsi.';
+    
+    const btn = document.getElementById('detail-add-btn');
+    if(isReady) {
+        btn.innerText = "+ Keranjang";
+        btn.disabled = false;
+        btn.style.background = "#2563eb";
+        btn.onclick = () => { window.addToCart(p.id); window.toggleDetail(); };
+    } else {
+        btn.innerText = "Stok Habis";
+        btn.disabled = true;
+        btn.style.background = "#ccc";
+        btn.onclick = null;
+    }
+    
+    document.getElementById('detail-screen').classList.remove('hidden');
 };
 
-window.toggleDetail = () => document.getElementById('detail-screen').classList.toggle('hidden');
+window.toggleDetail = () => document.getElementById('detail-screen').classList.add('hidden');
 
+// === 5. LOGIKA KERANJANG ===
 window.addToCart = function(id) {
     const product = products.find(x => x.id === id);
+    if(!product || product.status === false) return; // Proteksi tambahan
+
     const existing = cart.find(x => x.id === id);
     if(existing) existing.qty += 1;
     else cart.push({...product, qty: 1});
-    document.getElementById('cart-count').innerText = cart.reduce((s, i) => s + i.qty, 0);
-    // Notifikasi sederhana jika toast belum siap
-    console.log("Ditambah ke keranjang");
+    
+    updateCartCount();
+    showToast(`${product.name}\nMasuk keranjang!`);
+    // alert("Berhasil ditambah ke keranjang!");
 };
+
+function updateCartCount() {
+    const count = cart.reduce((s, i) => s + i.qty, 0);
+    document.getElementById('cart-count').innerText = count;
+}
 
 window.toggleCart = function() {
     document.getElementById('cart-screen').classList.toggle('hidden');
@@ -105,15 +132,9 @@ window.toggleCart = function() {
 function renderCartItems() {
     const container = document.getElementById('cart-items');
     const summary = document.getElementById('cart-summary');
-    const memberArea = document.getElementById('member-info-thermal'); 
-    const user = JSON.parse(localStorage.getItem('userData'));
     
-    if(user && memberArea) {
-        memberArea.innerHTML = `<div><b>Nama:</b> ${user.name}</div><div><b>WA:</b> ${user.wa}</div><div><b>Alamat:</b> ${user.address}</div>`;
-    }
-
     if(cart.length === 0) {
-        container.innerHTML = "<p style='text-align:center;'>Keranjang Kosong</p>";
+        container.innerHTML = "<p style='text-align:center; padding:20px;'>Keranjang Kosong</p>";
         summary.innerHTML = ""; return;
     }
 
@@ -122,24 +143,25 @@ function renderCartItems() {
         const itemSub = item.price * item.qty;
         subtotal += itemSub;
         return `
-            <div class="cart-item-row">
+            <div style="border-bottom:1px solid #eee; padding:10px 0;">
                 <div style="display:flex; justify-content:space-between;">
-                    <span><b>${item.name}</b></span>
-                    <div class="qty-control no-print">
+                    <b>${idx + 1}. ${item.name}</b>
+                    <div>
                         <button onclick="window.updateQty(${idx}, -1)">-</button>
-                        <b>${item.qty}</b>
+                        <span style="margin:0 10px">${item.qty}</span>
                         <button onclick="window.updateQty(${idx}, 1)">+</button>
                     </div>
                 </div>
-                <div style="font-size:12px;">@Rp ${item.price.toLocaleString()} | Sub: Rp ${itemSub.toLocaleString()}</div>
+                <div style="font-size:12px; color:#666;">@Rp ${item.price.toLocaleString()} | Sub: Rp ${itemSub.toLocaleString()}</div>
             </div>`;
     }).join('');
 
     summary.innerHTML = `
-        <div class="cart-summary-box">
+        <div style="padding:15px; background:#f9f9f9; border-radius:10px; margin-top:10px;">
             <div style="display:flex; justify-content:space-between"><span>Subtotal:</span> <span>Rp ${subtotal.toLocaleString()}</span></div>
             <div style="display:flex; justify-content:space-between"><span>Ongkir:</span> <span>Rp ${HARGA_ONGKIR.toLocaleString()}</span></div>
-            <div class="total-line" style="display:flex; justify-content:space-between; font-weight:bold; border-top:1px solid #000; margin-top:5px; padding-top:5px;">
+            <hr>
+            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:16px;">
                 <span>TOTAL:</span> <span>Rp ${(subtotal + HARGA_ONGKIR).toLocaleString()}</span>
             </div>
         </div>`;
@@ -148,40 +170,102 @@ function renderCartItems() {
 window.updateQty = function(idx, chg) {
     cart[idx].qty += chg;
     if(cart[idx].qty <= 0) cart.splice(idx, 1);
-    document.getElementById('cart-count').innerText = cart.reduce((s, i) => s + i.qty, 0);
+    updateCartCount();
     renderCartItems();
 };
 
+// === 6. FITUR SEARCH & FILTER ===
 window.filterProduct = function(cat, event) {
-    renderProducts(cat === 'Semua' ? products : products.filter(p => p.category === cat));
-    const btns = document.querySelectorAll('.cat-btn');
-    btns.forEach(b => b.classList.remove('active'));
+    window.renderProducts(cat === 'Semua' ? products : products.filter(p => p.category === cat));
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
     if(event) event.target.classList.add('active');
 };
 
 window.searchProduct = function() {
     const k = document.getElementById('search-input').value.toLowerCase();
-    renderProducts(products.filter(p => p.name.toLowerCase().includes(k)));
+    window.renderProducts(products.filter(p => p.name.toLowerCase().includes(k)));
 };
 
-// --- ISI PESAN WHATAPP ---
+// === 7. WHATSAPP & AUTO-RESET KERANJANG ===
 window.sendWA = function() {
     const user = JSON.parse(localStorage.getItem('userData'));
-    if (!user) return alert("Isi data dulu!");
-    let t = `*PESANAN BARU COD*\nNama: ${user.name}\nAlamat: ${user.address}\n----------------------------\n*Daftar Belanja:*\n`;
-    let sub = 0;
-    cart.forEach(i => {
-        t += `- ${i.name} (${i.qty}x)\n`;
-        sub += (i.price * i.qty);
+    if (!user) return alert("Mohon isi data diri (Pendaftaran) terlebih dahulu!");
+    if (cart.length === 0) return alert("Keranjang masih kosong!");
+
+    // Header Pesan
+    let t = `*PESANAN BARU*\n`;
+    t += `*----------------------------*\n`;
+    t += `Nama: ${user.name}\n`;
+    t += `Alamat: ${user.address}\n`;
+    t += `----------------------------\n`;
+    t += `*DAFTAR BELANJA:*\n\n`;
+
+    let subtotal = 0;
+
+    // Looping Produk dengan format baru
+    cart.forEach((i, index) => {
+        const itemTotal = i.price * i.qty;
+        subtotal += itemTotal;
+
+        // 1. *Nama Barang* (Tebal)
+        // @Rp Harga Satuan x Jumlah = Total Harga Barang (Biasa)
+        t += `*${index + 1}. ${i.name}*\n`; 
+        t += `    @Rp ${i.price.toLocaleString()} x ${i.qty} = Rp ${itemTotal.toLocaleString()}\n`;
     });
-        t += `----------------------------\n*Total: Rp ${(sub + HARGA_ONGKIR).toLocaleString()}*\n----------------------------\n\nSegera di proses, Terima Kasih.`;
+
+    // Rincian Pembayaran
+    t += `----------------------------\n`;
+    t += `Subtotal: Rp ${subtotal.toLocaleString()}\n`;
+    t += `Ongkos Kirim: Rp ${HARGA_ONGKIR.toLocaleString()}\n`;
+    t += `*----------------------------*\n`;
+    t += `*TOTAL : Rp ${(subtotal + HARGA_ONGKIR).toLocaleString()}*\n`;
+    t += `*----------------------------*\n`;
+    t += `\nSegera siapkan ya min, terima kasih!`;
+    
+    // Buka WhatsApp
     window.open(`https://wa.me/${NOMOR_WA_ADMIN}?text=${encodeURIComponent(t)}`);
+
+    // Reset Keranjang setelah kirim (Opsional, agar tidak dobel pesan)
+    cart = [];
+    if(document.getElementById('cart-count')) document.getElementById('cart-count').innerText = 0;
+    if(typeof renderCartItems === "function") renderCartItems();
+    
+    alert("Pesanan terkirim ke WhatsApp!");
 };
-// --- DATA PRINTER TERMAL ---
-window.printThermal = () => window.print();
+
+
+// === 8. LAIN-LAIN ===
+window.saveUser = function() {
+    const n = document.getElementById('reg-name').value;
+    const w = document.getElementById('reg-wa').value;
+    const a = document.getElementById('reg-address').value;
+    if(!n || !w || !a) return alert("⚠️ Isi data lengkap!");
+    localStorage.setItem('userData', JSON.stringify({name:n, wa:w, address:a}));
+    document.getElementById('reg-screen').classList.add('hidden');
+    location.reload(); // Reload untuk update nama di header
+};
 
 window.onload = () => {
     const user = localStorage.getItem('userData');
-    if (user) document.getElementById('reg-screen').classList.add('hidden');
-    updateGreeting();
+    if (user) {
+        document.getElementById('reg-screen').classList.add('hidden');
+        const d = JSON.parse(user);
+        if(document.getElementById('display-name')) {
+            document.getElementById('display-name').innerText = d.name.toUpperCase();
+        }
+    }
+};
+
+// Menampilkan toast info alert sebentar
+window.showToast = function(pesan) {
+    const toast = document.getElementById('toast');
+    if(!toast) return;
+
+    toast.innerText = pesan;
+    toast.classList.add('show');
+    
+    // Hilangkan otomatis setelah 2 detik
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2000);
 };
